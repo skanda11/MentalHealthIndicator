@@ -1,0 +1,12 @@
+pandas
+scikit-learn
+torch
+transformers
+pyyaml
+streamlit
+plotly
+tqdm
+numpy
+hf_xet
+google.generativeai
+#torch torchvision --index-url https://download.pytorch.org/whl/cu126 # to use GPU if available

@@ -1,0 +1,9 @@
+# data
+*.npy
+*.tfrecord
+*.csv
+
+# models
+*.h5
+*.ckpt
+*.safetensors

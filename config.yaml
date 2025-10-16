@@ -1,0 +1,46 @@
+#Configuration file for the Mental Health Indicator project
+#Paths are configured for a Windows environment (note the use of double backslashes \\)
+#--- Data Paths ---
+#All paths are relative to the project root directory (MentalHealthIndicator)
+data:
+  raw_data_path: "data\\raw\\Suicide_Detection.csv"
+  processed_data_path: "data\\processed\\processed_data.csv"
+  predictions_path: "data\\predictions\\predictions.csv"
+  trends_path: "data\\predictions\\temporal_trends.csv"
+
+#--- Model & Tokenizer Paths ---
+model:
+  base_model: "distilbert-base-uncased"
+  tokenizer_path: "models\\classifier\\tokenizer"
+  classifier_path: "models\\classifier" # Directory to save model files
+
+#--- Preprocessing Parameters ---
+preprocessing:
+  max_length: 128
+  test_size: 0.2
+  random_state: 42
+
+#--- Training Parameters ---
+training:
+#Set to a smaller number for quicker testing, e.g., 2000
+#Set to -1 to use the full dataset
+  training_subset_size: 2000
+  testing_subset_size: 500
+  epochs: 50
+  batch_size: 16
+  learning_rate: 0.00005
+
+#--- Early Stopping Parameters ---
+  early_stopping_patience: 3 # Number of epochs with no improvement to wait before stopping
+  min_delta: 0.01            # Minimum change in validation loss to be considered an improvement
+
+#--- Prediction Parameters ---
+prediction:
+  batch_size: 256 #changing this help with memory issues as it using only CPU and not GPU 
+
+#--- Temporal Analysis Parameters ---
+temporal_analysis:
+#Simulate a date range since the dataset has no timestamps
+  start_date: "2022-01-01"
+  end_date: "2023-12-31"
+  resample_freq: "W" # 'M' for month, 'W' for week, 'D' for day
