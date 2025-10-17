@@ -2,6 +2,13 @@
 #Paths are configured for a Windows environment (note the use of double backslashes \\)
 #--- Data Paths ---
 #All paths are relative to the project root directory (MentalHealthIndicator)
+
+#--- API Keys ---
+
+api_keys:
+  #gemini_api_key: "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" # <-- PASTE YOUR GEMINI API KEY HERE
+  gemini_api_key: "AIzaSyDTt4EDyJqxu2kH5Kyc4k66-V8eApaYmgA"
+
 data:
   raw_data_path: "data\\raw\\Suicide_Detection.csv"
   processed_data_path: "data\\processed\\processed_data.csv"
@@ -36,7 +43,7 @@ training:
 
 #--- Prediction Parameters ---
 prediction:
-  batch_size: 256 #changing this help with memory issues as it using only CPU and not GPU 
+  batch_size: 1028 #changing this help with memory issues as it using only CPU and not GPU 
 
 #--- Temporal Analysis Parameters ---
 temporal_analysis:

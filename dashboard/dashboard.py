@@ -13,28 +13,30 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.helpers import load_config
 
-# --- IMPORTANT ---
-# Configure the Gemini API key.
-# For this application to work, you MUST set your Gemini API key as an environment variable.
-# In your terminal before running streamlit, use: set GEMINI_API_KEY=YOUR_API_KEY
-# You can get a free key from https://aistudio.google.com/
+# Load configuration at the start
+config = load_config()
+if not config:
+    st.error("Fatal: Could not load configuration from config.yaml. Dashboard cannot start.", icon="🚨")
+    st.stop()
+
+# --- Gemini API Configuration ---
+api_key = None
 try:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if api_key:
+    api_key = config.get('api_keys', {}).get('gemini_api_key')
+    if api_key and api_key != "YOUR_API_KEY_HERE":
         genai.configure(api_key=api_key)
     else:
-        # This will be handled gracefully in the UI
-        pass
+        api_key = None # Ensure api_key is None if not set properly
 except Exception as e:
-    st.warning(f"Could not configure Gemini API. The 'Second Opinion' feature may be unavailable. Error: {e}")
+    st.warning(f"Could not configure Gemini API. The 'Second Opinion' feature will be unavailable. Error: {e}")
 
 st.set_page_config(page_title="Mental Health Indicator Dashboard", layout="wide")
 
 # --- Function Definitions ---
 @st.cache_resource
-def get_config():
-    """Load the project configuration."""
-    return load_config()
+def get_config_cached():
+    """Return the already loaded config."""
+    return config
 
 @st.cache_resource
 def load_model_and_tokenizer(_config):
@@ -67,12 +69,11 @@ def classify_text_local(text, _model, _tokenizer):
 def get_gemini_response(text):
     """Get a classification and explanation from the Gemini API."""
     if not api_key:
-         return {"error": "API key for Gemini is not configured. Please set the GEMINI_API_KEY environment variable."}
+         return {"error": "API key for Gemini is not configured in config.yaml."}
 
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # A carefully crafted prompt to guide Gemini for a structured JSON response
         prompt = f"""
         Analyze the following text for signs of suicidal ideation. Your response must be a valid JSON object.
         Do not include any text or markdown formatting before or after the JSON object.
@@ -87,11 +88,7 @@ def get_gemini_response(text):
         """
         
         response = model.generate_content(prompt)
-        
-        # Clean the response to extract only the JSON part
         json_text = response.text.strip().replace('```json', '').replace('```', '')
-        
-        # Parse the JSON string into a Python dictionary
         return json.loads(json_text)
         
     except Exception as e:
@@ -110,13 +107,8 @@ def load_analysis_data(trends_path, predictions_path):
         return None, None
 
 # --- Main Application Logic ---
-config = get_config()
-if config:
-    local_model, local_tokenizer = load_model_and_tokenizer(config)
-    trends_df, predictions_df = load_analysis_data(config['data']['trends_path'], config['data']['predictions_path'])
-else:
-    st.error("Fatal: Could not load configuration. Dashboard cannot start.")
-    st.stop()
+local_model, local_tokenizer = load_model_and_tokenizer(config)
+trends_df, predictions_df = load_analysis_data(config['data']['trends_path'], config['data']['predictions_path'])
 
 # --- UI Layout ---
 st.title("Mental Health Indicator Analysis Dashboard")
@@ -167,7 +159,7 @@ with tab2:
     with col2:
         if st.button("Get Second Opinion with Gemini", use_container_width=True, disabled=(not api_key)):
             if not api_key:
-                st.error("Gemini API key not found. Please set the environment variable.")
+                st.error("Gemini API key not found. Please set it in your config.yaml file.")
             elif user_text:
                 with st.spinner("Contacting Gemini for a second opinion..."):
                     gemini_result = get_gemini_response(user_text)
@@ -211,4 +203,3 @@ with tab3:
     else:
         st.info("Prediction data not available. Please run the `predict` step.")
 
-# --- End of Application ---

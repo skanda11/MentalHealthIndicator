@@ -112,3 +112,21 @@ streamlit run dashboard/app.py
 ```
 
 This will start a local web server and provide a URL (usually http://localhost:8501) that you can open in your web browser to view and interact with the dashboard.
+
+## 6. Future Enhancements
+
+The following features are planned for future development to enhance the project's capabilities and impact:
+
+#### Hybrid AI Analysis with Gemini:
+
+Integrate the Google Gemini API into the Streamlit dashboard.
+
+This will add a **"Get a Second Opinion with Gemini"** button, allowing users to get a real-time, nuanced analysis from a state-of-the-art Large Language Model, complementing the prediction from the locally trained DistilBERT model.
+
+#### Interactive Wellness Chatbot:
+
+Develop a separate Streamlit application (chatbot.py) that functions as an empathetic wellness assistant.
+
+The chatbot will use the Gemini API with a specialized system prompt to engage in supportive conversations, internally assess the user's stress level, and proactively suggest de-escalation or mindfulness techniques if it detects high levels of distress.
+
+It will also be programmed to provide contact information for mental health helplines in India if a user expresses direct mentions of crisis.
