@@ -14,6 +14,8 @@ data:
   processed_data_path: "data\\processed\\processed_data.csv"
   predictions_path: "data\\predictions\\predictions.csv"
   trends_path: "data\\predictions\\temporal_trends.csv"
+  tokenized_data_path: "data\\processed\\tokenized_data.pt"
+
 
 #--- Model & Tokenizer Paths ---
 model:

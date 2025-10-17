@@ -1,72 +1,72 @@
 import argparse
 import sys
 import logging
-import os
 from utils.helpers import load_config, create_directories
 from preprocessing.preprocess import main as preprocess_main
+from tokenization.tokenize_data import main as tokenize_main # New import
 from classification.train_model import main as train_main
 from classification.predict import main as predict_main
-from classification.predict_gemini import main as predict_gemini_main
 from temporal_analysis.analyze_trends import main as analyze_main
 
-# Configure basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# --- Setup Logging ---
+# (Logging setup remains the same)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 
 def main():
     """
-    Main function to orchestrate the pipeline execution based on command-line arguments.
+    Main function to orchestrate the pipeline execution.
     """
     parser = argparse.ArgumentParser(description="Mental Health Indicator Analysis Pipeline")
     parser.add_argument(
         'steps',
         nargs='+',
-        choices=['preprocess', 'train', 'predict', 'predict_gemini', 'analyze', 'dashboard', 'all'],
-        help="Pipeline step(s) to run. Use 'all' to run the entire pipeline."
+        choices=['preprocess', 'tokenize', 'train', 'predict', 'analyze', 'all'], # Added 'tokenize'
+        help="Pipeline step(s) to run."
     )
     args = parser.parse_args()
 
-    # --- Load Configuration ---
     config = load_config()
     if not config:
-        logging.error("Could not load configuration. Exiting.")
-        return
-        
-    create_directories(config)
+        logging.error("Configuration file could not be loaded. Exiting.")
+        sys.exit(1)
     
-    # --- Execute Pipeline Steps ---
+    create_directories(config)
+
     steps_to_run = args.steps
     if 'all' in steps_to_run:
-        steps_to_run = ['preprocess', 'train', 'predict', 'analyze']
+        steps_to_run = ['preprocess', 'tokenize', 'train', 'predict', 'analyze']
 
     if 'preprocess' in steps_to_run:
         logging.info("--- Starting Step: Data Preprocessing ---")
         preprocess_main(config)
-        logging.info("--- Finished Step: Data Preprocessing ---")
+        logging.info("--- Completed Step: Data Preprocessing ---")
+
+    if 'tokenize' in steps_to_run:
+        logging.info("--- Starting Step: Data Tokenization ---")
+        tokenize_main(config)
+        logging.info("--- Completed Step: Data Tokenization ---")
 
     if 'train' in steps_to_run:
         logging.info("--- Starting Step: Model Training ---")
         train_main(config)
-        logging.info("--- Finished Step: Model Training ---")
+        logging.info("--- Completed Step: Model Training ---")
 
     if 'predict' in steps_to_run:
         logging.info("--- Starting Step: Prediction ---")
         predict_main(config)
         logging.info("--- Completed Step: Prediction ---")
 
-    if 'predict_gemini' in steps_to_run:
-        logging.info("--- Starting Step: Prediction with Gemini ---")
-        predict_gemini_main(config)
-        logging.info("--- Completed Step: Prediction with Gemini ---")
-
     if 'analyze' in steps_to_run:
         logging.info("--- Starting Step: Temporal Analysis ---")
         analyze_main(config)
-        logging.info("--- Finished Step: Temporal Analysis ---")
+        logging.info("--- Completed Step: Temporal Analysis ---")
 
-    if 'dashboard' in steps_to_run:
-        logging.info("--- Starting Step: Launching Dashboard ---")
-        os.system("streamlit run dashboard/dashboard.py")
+    logging.info("Pipeline execution finished.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
