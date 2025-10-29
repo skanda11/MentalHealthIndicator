@@ -19,8 +19,9 @@ data:
 
 #--- Model & Tokenizer Paths ---
 model:
-  base_model: "distilbert-base-uncased"
-  tokenizer_path: "models\\classifier\\tokenizer"
+  #base_model: "distilbert-base-uncased"
+  base_model: "albert-base-v2" # Using ALBERT as the base model
+  tokenizer_path: "models\\classifier\\tokenizer" # Directory to save tokenizer files
   classifier_path: "models\\classifier" # Directory to save model files
 
 #--- Preprocessing Parameters ---
@@ -35,8 +36,8 @@ training:
 #Set to -1 to use the full dataset
   training_subset_size: 2000
   testing_subset_size: 500
-  epochs: 50
-  batch_size: 16
+  epochs: 10
+  batch_size: 64
   learning_rate: 0.00005
 
 #--- Early Stopping Parameters ---
