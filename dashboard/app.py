@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+from transformers import (
+    DistilBertTokenizer, DistilBertForSequenceClassification,
+    AlbertTokenizer, AlbertForSequenceClassification,
+    MobileBertTokenizer, MobileBertForSequenceClassification
+) # <-- Added imports
 import os
 import sys
 import google.generativeai as genai
@@ -32,6 +36,15 @@ except Exception as e:
 
 st.set_page_config(page_title="Mental Health Indicator Dashboard", layout="wide")
 
+# --- Helper function to get correct model classes ---
+def get_model_and_tokenizer_classes(model_name):
+    if 'albert' in model_name.lower():
+        return AlbertForSequenceClassification, AlbertTokenizer
+    elif 'mobilebert' in model_name.lower():
+         return MobileBertForSequenceClassification, MobileBertTokenizer
+    else: # Default to DistilBERT
+        return DistilBertForSequenceClassification, DistilBertTokenizer
+
 # --- Function Definitions ---
 @st.cache_resource
 def get_config_cached():
@@ -42,8 +55,20 @@ def get_config_cached():
 def load_model_and_tokenizer(_config):
     """Load the fine-tuned local model and tokenizer."""
     try:
-        tokenizer = DistilBertTokenizer.from_pretrained(_config['model']['tokenizer_path'])
-        model = DistilBertForSequenceClassification.from_pretrained(_config['model']['classifier_path'])
+        model_name = _config['model']['base_model']
+        tokenizer_path = _config['model']['tokenizer_path']
+        model_path = _config['model']['classifier_path']
+
+        # Get the correct classes based on the config
+        model_class, tokenizer_class = get_model_and_tokenizer_classes(model_name)
+        
+        if not os.path.exists(tokenizer_path) or not os.path.exists(model_path):
+             st.error(f"Model/Tokenizer not found at {model_path}. Please run the training pipeline first (`python main.py train`).")
+             return None, None
+
+        tokenizer = tokenizer_class.from_pretrained(tokenizer_path)
+        model = model_class.from_pretrained(model_path)
+        
         model.eval()  # Set model to evaluation mode
         return model, tokenizer
     except Exception as e:
@@ -114,7 +139,7 @@ trends_df, predictions_df = load_analysis_data(config['data']['trends_path'], co
 st.title("Mental Health Indicator Analysis Dashboard")
 st.markdown("This dashboard provides insights from a model trained to detect potential suicide risk in text posts. It also allows for real-time text classification using the local model and Google's Gemini Pro for a second opinion.")
 
-tab1, tab2, tab3 = st.tabs(["📊 Trend Analysis", "🔍 Live Classifier", "📚 Data Explorer"])
+tab1, tab2, tab3 = st.tabs(["📊 Trend Analysis", "💬 Live Classifier", "🗃️ Data Explorer"])
 
 # Tab 1: Trend Analysis
 with tab1:
@@ -139,7 +164,7 @@ with tab1:
             )
             st.plotly_chart(fig_vol, use_container_width=True)
     else:
-        st.info("Trend data not available. Please run the `temporal_analysis` step.")
+        st.info("Trend data not available. Please run the `analyze` step.")
 
 # Tab 2: Live Classifier
 with tab2:
@@ -148,8 +173,10 @@ with tab2:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Analyze with Local Model", use_container_width=True):
-            if user_text:
+        if st.button("Analyze with Local Model", use_container_width=True, disabled=(local_model is None)):
+            if local_model is None:
+                st.error("Local model is not loaded. Please check the logs.")
+            elif user_text:
                 with st.spinner("Analyzing with local model..."):
                     label, confidence = classify_text_local(user_text, local_model, local_tokenizer)
                     st.session_state.local_result = (label, confidence)
@@ -202,4 +229,3 @@ with tab3:
         st.dataframe(predictions_df)
     else:
         st.info("Prediction data not available. Please run the `predict` step.")
-
