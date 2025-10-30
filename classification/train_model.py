@@ -1,6 +1,6 @@
 import torch
-from torch.utils.data import DataLoader, Dataset
-from torch.optim import AdamW  # <-- FIXED IMPORT
+from torch.utils.data import DataLoader, TensorDataset # <-- Import TensorDataset
+from torch.optim import AdamW
 from transformers import (
     DistilBertTokenizer, DistilBertForSequenceClassification,
     AlbertTokenizer, AlbertForSequenceClassification,
@@ -30,20 +30,8 @@ def setup_training_log():
             
     return log_file
 
-class SuicidalTextDataset(torch.utils.data.Dataset):
-    """Custom Dataset for PyTorch."""
-    def __init__(self, encodings, labels):
-        self.encodings = encodings
-        self.labels = labels
-
-    def __getitem__(self, idx):
-        # Ensure all values are tensors
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = torch.tensor(self.labels[idx], dtype=torch.long) # Ensure labels are long type
-        return item
-
-    def __len__(self):
-        return len(self.labels)
+# Note: The SuicidalTextDataset class is no longer needed
+# as we will use PyTorch's built-in TensorDataset
 
 # Dynamically get model and tokenizer classes based on name
 def get_model_and_tokenizer(model_name):
@@ -71,50 +59,85 @@ def main(config):
     else:
         logging.warning("CUDA not available, AMP disabled. Training will run on CPU.")
 
-    # --- Load and Split Data ---
-    df = load_data(config['data']['processed_data_path'])
-    if df is None:
+    # --- Load Pre-Tokenized Data ---
+    tokenized_data_path = config['data']['tokenized_data_path']
+    try:
+        logging.info(f"Loading pre-tokenized data from {tokenized_data_path}...")
+        tokenized_data = torch.load(tokenized_data_path)
+        all_input_ids = tokenized_data['input_ids']
+        all_attention_masks = tokenized_data['attention_mask']
+        all_labels = tokenized_data['labels']
+        logging.info("Tokenized data loaded successfully.")
+    except FileNotFoundError:
+        logging.error(f"Tokenized data file '{tokenized_data_path}' not found.")
+        logging.error("Please run the 'tokenize' step first. You can run: python tokenization/tokenize_data.py")
         return
-
-    # Handle subsetting for faster testing runs
+    except Exception as e:
+        logging.error(f"Error loading tokenized data: {e}")
+        return
+    
+    # --- Handle Subsetting ---
     subset_size = config['training'].get('training_subset_size', -1)
-    if subset_size > 0 and subset_size < len(df):
-        df = df.sample(n=subset_size, random_state=config['preprocessing']['random_state'])
-        logging.info(f"Using a subset of {len(df)} training examples.")
-    else:
-        logging.info(f"Using full dataset of {len(df)} examples.")
+    test_subset_size = config['training'].get('testing_subset_size', 500) 
 
-    
-    # Ensure text column is string
-    df['text'] = df['text'].astype(str)
-
-    train_texts, test_texts, train_labels, test_labels = train_test_split(
-        df['text'].tolist(),
-        df['label'].tolist(),
-        test_size=config['preprocessing']['test_size'],
-        random_state=config['preprocessing']['random_state']
-    )
-
-    # --- Tokenization ---
-    base_model_name = config['model']['base_model']
-    logging.info(f"Loading tokenizer: {base_model_name}")
-    
-    model_class, tokenizer_class = get_model_and_tokenizer(base_model_name)
-    tokenizer = tokenizer_class.from_pretrained(base_model_name)
+    if subset_size > 0 and (subset_size + test_subset_size) < len(all_labels):
+        logging.info(f"Using a subset of {subset_size} for training and {test_subset_size} for testing.")
         
-    logging.info("Tokenizing training and testing data...")
-    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=config['preprocessing']['max_length'])
-    test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=config['preprocessing']['max_length'])
+        # Calculate total subset size and test proportion
+        total_subset = subset_size + test_subset_size
+        test_proportion = test_subset_size / float(total_subset)
+
+        # Stratified split to get a representative subset
+        temp_indices = np.arange(len(all_labels))
+        _, subset_indices = train_test_split(
+            temp_indices,
+            test_size=total_subset,
+            random_state=config['preprocessing']['random_state'],
+            stratify=all_labels
+        )
+        
+        subset_input_ids = all_input_ids[subset_indices]
+        subset_attention_masks = all_attention_masks[subset_indices]
+        subset_labels = all_labels[subset_indices]
+
+        # Now, split this subset into train and test
+        train_input_ids, test_input_ids, train_attention_masks, test_attention_masks, train_labels, test_labels = train_test_split(
+            subset_input_ids,
+            subset_attention_masks,
+            subset_labels,
+            test_size=test_proportion,
+            random_state=config['preprocessing']['random_state'],
+            stratify=subset_labels
+        )
+    
+    else:
+        logging.info(f"Using full dataset of {len(all_labels)} examples.")
+        # Split the full dataset into train and test
+        train_input_ids, test_input_ids, train_attention_masks, test_attention_masks, train_labels, test_labels = train_test_split(
+            all_input_ids,
+            all_attention_masks,
+            all_labels,
+            test_size=config['preprocessing']['test_size'],
+            random_state=config['preprocessing']['random_state'],
+            stratify=all_labels
+        )
 
     # --- Create Datasets and Dataloaders ---
-    train_dataset = SuicidalTextDataset(train_encodings, train_labels)
-    test_dataset = SuicidalTextDataset(test_encodings, test_labels)
+    train_dataset = TensorDataset(train_input_ids, train_attention_masks, train_labels)
+    test_dataset = TensorDataset(test_input_ids, test_attention_masks, test_labels)
 
     num_workers = 2 if device.type == 'cuda' else 0
     train_dataloader = DataLoader(train_dataset, batch_size=config['training']['batch_size'], shuffle=True, num_workers=num_workers, pin_memory=True if use_amp else False)
     test_dataloader = DataLoader(test_dataset, batch_size=config['training']['batch_size'], num_workers=num_workers, pin_memory=True if use_amp else False)
 
     # --- Model and Optimizer ---
+    base_model_name = config['model']['base_model']
+    logging.info(f"Loading tokenizer: {base_model_name}")
+    
+    model_class, tokenizer_class = get_model_and_tokenizer(base_model_name)
+    # We still need the tokenizer for saving later
+    tokenizer = tokenizer_class.from_pretrained(base_model_name)
+        
     logging.info(f"Loading base model: {base_model_name}")
     model = model_class.from_pretrained(base_model_name, num_labels=2)
     
@@ -141,20 +164,17 @@ def main(config):
         # -- Training Phase --
         model.train()
         total_train_loss = 0
-        # Wrap the dataloader with tqdm for a progress bar
         train_progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1} Training", leave=False)
         
         for i, batch in enumerate(train_progress_bar):
             optimizer.zero_grad()
             
-            # --- NEW: Detailed logging per batch ---
             if (i + 1) % 100 == 0: # Log every 100 batches
                 logging.info(f"Epoch {epoch+1}, processing batch {i+1}/{len(train_dataloader)}")
             
             try:
-                input_ids = batch['input_ids'].to(device, non_blocking=True)
-                attention_mask = batch['attention_mask'].to(device, non_blocking=True)
-                labels = batch['labels'].to(device, non_blocking=True)
+                # Unpack the batch from TensorDataset
+                input_ids, attention_mask, labels = [b.to(device, non_blocking=True) for b in batch]
 
                 # Cast operations to mixed precision
                 with amp.autocast(enabled=use_amp):
@@ -165,29 +185,16 @@ def main(config):
                     logging.warning(f"Loss is None for batch {i+1}. Skipping batch.")
                     continue
 
-                # Scales loss. Calls backward() on scaled loss to create scaled gradients.
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
 
                 total_train_loss += loss.item()
-                # Update tqdm description with current loss
                 train_progress_bar.set_postfix({'loss': loss.item()})
             
             except Exception as e:
                 logging.error(f"Error during training batch {i+1} in epoch {epoch+1}: {e}")
-                # Log the problematic batch's text for review
-                try:
-                    # Get the original text indices for this batch
-                    start_idx = i * config['training']['batch_size']
-                    end_idx = start_idx + len(batch['input_ids'])
-                    problem_texts = train_texts[start_idx:end_idx]
-                    logging.error(f"Problematic texts (first 5): {problem_texts[:5]}")
-                except Exception as log_e:
-                    logging.error(f"Could not retrieve problematic text: {log_e}")
-                
-                # Continue to the next batch instead of crashing
-                # You might want to 'raise e' here if you prefer to stop on error
+                # Skipping detailed text logging as it's complex with pre-tokenized data
                 continue 
 
         avg_train_loss = total_train_loss / len(train_dataloader) if len(train_dataloader) > 0 else 0
@@ -200,9 +207,8 @@ def main(config):
         with torch.no_grad():
             for batch in val_progress_bar:
                 try:
-                    input_ids = batch['input_ids'].to(device, non_blocking=True)
-                    attention_mask = batch['attention_mask'].to(device, non_blocking=True)
-                    labels = batch['labels'].to(device, non_blocking=True)
+                    # Unpack the batch from TensorDataset
+                    input_ids, attention_mask, labels = [b.to(device, non_blocking=True) for b in batch]
 
                     with amp.autocast(enabled=use_amp):
                         outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
@@ -213,8 +219,9 @@ def main(config):
                         val_progress_bar.set_postfix({'val_loss': loss.item()})
                 except Exception as e:
                     logging.error(f"Error during validation batch: {e}")
-                    continue # Skip problematic validation batch
+                    continue
 
+        # *** THIS IS THE FIX FOR THE NameError ***
         avg_val_loss = total_val_loss / len(test_dataloader) if len(test_dataloader) > 0 else 0
         logging.info(f"Validation Loss: {avg_val_loss:.4f}")
 
@@ -262,4 +269,3 @@ if __name__ == '__main__':
     if config:
         create_directories(config)
         main(config)
-
