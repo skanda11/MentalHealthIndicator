@@ -7,8 +7,8 @@
 
 api_keys:
   #gemini_api_key: "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" # <-- PASTE YOUR GEMINI API KEY HERE
-  gemini_api_key: "AIzaSyDTt4EDyJqxu2kH5Kyc4k66-V8eApaYmgA"
-
+  gemini_api_key: "AIzaSyCoOe5KQU6IESfHGJLVP13lGWWR7W3ADL0" #for generating Questions
+ 
 data:
   raw_data_path: "data\\raw\\Suicide_Detection.csv"
   processed_data_path: "data\\processed\\processed_data.csv"

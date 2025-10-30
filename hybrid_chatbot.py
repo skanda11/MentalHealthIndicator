@@ -31,7 +31,7 @@ try:
     api_key = config.get('api_keys', {}).get('gemini_api_key')
     if api_key and api_key != "YOUR_API_KEY_HERE":
         genai.configure(api_key=api_key)
-        gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+        gemini_model = genai.GenerativeModel('gemini-2.5-flash')
     else:
         st.error("Your Gemini API key is not configured in config.yaml. Please add it to run the chatbot.", icon="🚨")
         st.stop()
