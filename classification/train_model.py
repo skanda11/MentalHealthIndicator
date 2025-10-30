@@ -215,7 +215,7 @@ def main(config):
                     logging.error(f"Error during validation batch: {e}")
                     continue # Skip problematic validation batch
 
-        avg_val_loss = total_val_loss / len(test_dataloader) if len(val_dataloader) > 0 else 0
+        avg_val_loss = total_val_loss / len(test_dataloader) if len(test_dataloader) > 0 else 0
         logging.info(f"Validation Loss: {avg_val_loss:.4f}")
 
         # -- Log metrics to CSV file --
