@@ -41,7 +41,9 @@ training:
   learning_rate: 0.00005
 
 #--- Early Stopping Parameters ---
-  early_stopping_patience: 3 # Number of epochs with no improvement to wait before stopping
+early_stopping:
+  enabled: true             # Enable or disable early stopping
+  patience: 3 # Number of epochs with no improvement to wait before stopping
   min_delta: 0.01            # Minimum change in validation loss to be considered an improvement
 
 #--- Prediction Parameters ---
