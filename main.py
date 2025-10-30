@@ -3,52 +3,57 @@ import sys
 import logging
 from utils.helpers import load_config, create_directories
 from preprocessing.preprocess import main as preprocess_main
-from tokenization.tokenize_data import main as tokenize_main # New import
+# We are not using the separate tokenizer script in this version
+# from tokenization.tokenize_data import main as tokenize_main 
 from classification.train_model import main as train_main
 from classification.predict import main as predict_main
 from temporal_analysis.analyze_trends import main as analyze_main
+from utils.debug_logger import setup_logger # Import the logger setup
 
 # --- Setup Logging ---
-# (Logging setup remains the same)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
-)
+setup_logger() # Call the function to configure file logging
 
 def main():
     """
-    Main function to orchestrate the pipeline execution.
+    Main function to orchestrate the pipeline execution based on command-line arguments.
     """
     parser = argparse.ArgumentParser(description="Mental Health Indicator Analysis Pipeline")
     parser.add_argument(
         'steps',
         nargs='+',
-        choices=['preprocess', 'tokenize', 'train', 'predict', 'analyze', 'all'], # Added 'tokenize'
-        help="Pipeline step(s) to run."
+        choices=['preprocess', 'train', 'predict', 'analyze', 'all'], # 'tokenize' is removed
+        help="Pipeline step(s) to run. Use 'all' to run the entire pipeline."
     )
     args = parser.parse_args()
 
-    config = load_config()
-    if not config:
-        logging.error("Configuration file could not be loaded. Exiting.")
+    # --- Load Configuration ---
+    try:
+        config = load_config()
+        if not config:
+            logging.error("Configuration file 'config.yaml' could not be loaded. Exiting.")
+            sys.exit(1)
+        logging.info("Configuration loaded successfully.")
+    except FileNotFoundError:
+        logging.error("Configuration file 'config.yaml' not found. Please ensure it's in the project root.")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"Error loading configuration: {e}")
         sys.exit(1)
     
+    # --- Create Necessary Directories ---
     create_directories(config)
 
+    # --- Execute Pipeline Steps ---
     steps_to_run = args.steps
     if 'all' in steps_to_run:
-        steps_to_run = ['preprocess', 'tokenize', 'train', 'predict', 'analyze']
+        steps_to_run = ['preprocess', 'train', 'predict', 'analyze']
 
     if 'preprocess' in steps_to_run:
         logging.info("--- Starting Step: Data Preprocessing ---")
         preprocess_main(config)
         logging.info("--- Completed Step: Data Preprocessing ---")
 
-    if 'tokenize' in steps_to_run:
-        logging.info("--- Starting Step: Data Tokenization ---")
-        tokenize_main(config)
-        logging.info("--- Completed Step: Data Tokenization ---")
+    # 'tokenize' step is removed
 
     if 'train' in steps_to_run:
         logging.info("--- Starting Step: Model Training ---")
@@ -70,3 +75,4 @@ def main():
 if __name__ == "__main__":
     main()
 
+# Note: The tokenization step has been removed as per the updated requirements.
