@@ -11,4 +11,6 @@ hf_xet
 google.generativeai
 psutil
 pynvml
+seaborn
+matplotlib
 #torch torchvision --index-url https://download.pytorch.org/whl/cu126 # to use GPU if available
