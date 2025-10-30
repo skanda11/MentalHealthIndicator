@@ -1,12 +1,13 @@
 import argparse
 import sys
 import logging
+import subprocess  # <-- Import the subprocess module
 from utils.helpers import load_config, create_directories
 from preprocessing.preprocess import main as preprocess_main
-# We are not using the separate tokenizer script in this version
-# from tokenization.tokenize_data import main as tokenize_main 
+from tokenization.tokenize_data import main as tokenize_main 
 from classification.train_model import main as train_main
 from classification.predict import main as predict_main
+from classification.evaluate_model import main as evaluate_main
 from temporal_analysis.analyze_trends import main as analyze_main
 from utils.debug_logger import setup_logger # Import the logger setup
 
@@ -21,8 +22,9 @@ def main():
     parser.add_argument(
         'steps',
         nargs='+',
-        choices=['preprocess', 'train', 'predict', 'analyze', 'all'], # 'tokenize' is removed
-        help="Pipeline step(s) to run. Use 'all' to run the entire pipeline."
+        choices=['preprocess', 'tokenize', 'train', 'predict', 'evaluate', 'analyze', 'all',
+                 'dashboard', 'gemini_chat', 'hybrid_chat'], # <-- ADDED NEW APP CHOICES
+        help="Pipeline step(s) to run. 'all' runs the data pipeline. 'dashboard', 'gemini_chat', and 'hybrid_chat' launch the Streamlit apps."
     )
     args = parser.parse_args()
 
@@ -45,15 +47,19 @@ def main():
 
     # --- Execute Pipeline Steps ---
     steps_to_run = args.steps
+    
     if 'all' in steps_to_run:
-        steps_to_run = ['preprocess', 'train', 'predict', 'analyze']
+        steps_to_run = ['preprocess', 'tokenize', 'train', 'predict', 'evaluate', 'analyze']
 
     if 'preprocess' in steps_to_run:
         logging.info("--- Starting Step: Data Preprocessing ---")
         preprocess_main(config)
         logging.info("--- Completed Step: Data Preprocessing ---")
 
-    # 'tokenize' step is removed
+    if 'tokenize' in steps_to_run:
+        logging.info("--- Starting Step: Data Tokenization ---")
+        tokenize_main(config)
+        logging.info("--- Completed Step: Data Tokenization ---")
 
     if 'train' in steps_to_run:
         logging.info("--- Starting Step: Model Training ---")
@@ -65,14 +71,45 @@ def main():
         predict_main(config)
         logging.info("--- Completed Step: Prediction ---")
 
+    if 'evaluate' in steps_to_run:
+        logging.info("--- Starting Step: Model Evaluation ---")
+        evaluate_main(config)
+        logging.info("--- Completed Step: Model Evaluation ---")
+
     if 'analyze' in steps_to_run:
         logging.info("--- Starting Step: Temporal Analysis ---")
         analyze_main(config)
         logging.info("--- Completed Step: Temporal Analysis ---")
 
+    # --- ADDED: Launch Streamlit Apps ---
+
+    if 'dashboard' in steps_to_run:
+        logging.info("--- Launching Main Dashboard ---")
+        logging.info("Access the app in your browser (usually at http://localhost:8501)")
+        try:
+            # Note: This will block the terminal until you close the app
+            subprocess.run(["streamlit", "run", "dashboard/dashboard.py"])
+        except FileNotFoundError:
+            logging.error("Could not find 'streamlit'. Please ensure it's installed: pip install streamlit")
+
+    if 'gemini_chat' in steps_to_run:
+        logging.info("--- Launching Gemini Chatbot (API only) ---")
+        logging.info("Access the app in your browser (usually at http://localhost:8501)")
+        try:
+            subprocess.run(["streamlit", "run", "chatbot.py"])
+        except FileNotFoundError:
+            logging.error("Could not find 'streamlit'. Please ensure it's installed: pip install streamlit")
+
+    if 'hybrid_chat' in steps_to_run:
+        logging.info("--- Launching Hybrid Chatbot (Local Model + API) ---")
+        logging.info("Access the app in your browser (usually at http://localhost:8501)")
+        try:
+            # Assumes hybrid_chatbot.py is in the root project directory
+            subprocess.run(["streamlit", "run", "hybrid_chatbot.py"]) 
+        except FileNotFoundError:
+            logging.error("Could not find 'streamlit'. Please ensure it's installed: pip install streamlit")
+
     logging.info("Pipeline execution finished.")
 
 if __name__ == "__main__":
     main()
-
-# Note: The tokenization step has been removed as per the updated requirements.

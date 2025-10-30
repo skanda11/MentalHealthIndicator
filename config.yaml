@@ -34,8 +34,8 @@ preprocessing:
 training:
 #Set to a smaller number for quicker testing, e.g., 2000
 #Set to -1 to use the full dataset
-  training_subset_size: 2000
-  testing_subset_size: 500
+  training_subset_size: -1
+  #testing_subset_size: 500
   epochs: 10
   batch_size: 64
   learning_rate: 0.00005
