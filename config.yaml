@@ -24,6 +24,13 @@ model:
   tokenizer_path: "models\\classifier\\tokenizer" # Directory to save tokenizer files
   classifier_path: "models\\classifier" # Directory to save model files
 
+  # --- ADD THIS SECTION ---
+  checkpoint:
+    # Directory to store resumable checkpoints
+    checkpoint_dir: 'models/checkpoints' 
+    # File for the latest resumable state
+    latest_checkpoint_file: 'latest_checkpoint.pth'
+
 #--- Preprocessing Parameters ---
 preprocessing:
   max_length: 128
