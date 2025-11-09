@@ -1,0 +1,22 @@
+Model Evaluation Report - 2025-11-08 23:42:37
+==============================
+Model: albert-base-v2
+Prediction File: data\predictions\predictions.csv
+Total Test Samples: 46415
+==============================
+
+--- Summary Metrics ---
+Accuracy:  0.9891
+Precision: 0.9954
+Recall:    0.9826
+F1-Score:  0.9890
+
+--- Detailed Classification Report ---
+                  precision    recall  f1-score   support
+
+ Non-Suicide (0)       0.98      1.00      0.99     23208
+Suicide Risk (1)       1.00      0.98      0.99     23207
+
+        accuracy                           0.99     46415
+       macro avg       0.99      0.99      0.99     46415
+    weighted avg       0.99      0.99      0.99     46415

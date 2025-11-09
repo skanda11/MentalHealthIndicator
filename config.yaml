@@ -43,14 +43,14 @@ training:
 #Set to -1 to use the full dataset
   training_subset_size: -1
   #testing_subset_size: 500
-  epochs: 10
+  epochs: 5
   batch_size: 64
   learning_rate: 0.00005
 
 #--- Early Stopping Parameters ---
   early_stopping:
     enabled: true             # Enable or disable early stopping
-    patience: 3 # Number of epochs with no improvement to wait before stopping
+    patience: 2 # Number of epochs with no improvement to wait before stopping
     min_delta: 0.01            # Minimum change in validation loss to be considered an improvement
 
 #--- Prediction Parameters ---
